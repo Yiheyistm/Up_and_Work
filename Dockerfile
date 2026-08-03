@@ -24,5 +24,5 @@ COPY . /app/
 # Expose FastAPI port
 EXPOSE 8001
 
-# Run database migrations and start Uvicorn
-CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8001"]
+# Run database migrations and start Uvicorn (respecting Render's $PORT env var)
+CMD ["sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8001}"]
