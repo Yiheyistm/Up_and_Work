@@ -1,6 +1,5 @@
-version: '3.8'
-
 services:
+  # ── 1. PostgreSQL Database ───────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     container_name: upwork_postgres
@@ -13,9 +12,41 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U upwork_user -d upwork_jobs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # The FastAPI backend can be run locally or within a container.
-  # For development, we typically run it locally to ease reloading.
+  # ── 2. FastAPI Backend Service ──────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: upwork_backend
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL inside Docker network to point to the 'db' container
+      - DATABASE_URL=postgresql+asyncpg://upwork_user:upwork_password@db:5432/upwork_jobs
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ── 3. Vite React Frontend Service ──────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: upwork_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
