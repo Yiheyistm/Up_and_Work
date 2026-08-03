@@ -5,6 +5,7 @@ uvicorn
 sqlalchemy
 asyncpg
 alembic
+google-genai
 google-generativeai
 APScheduler
 python-telegram-bot
