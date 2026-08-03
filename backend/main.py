@@ -144,13 +144,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS — allow all origins since allow_credentials=False (no cookies used).
-# This allows Vercel, preview deployments, and local dev to call the API cleanly.
+# Configure CORS — restrict allow_origins strictly to trusted domains
+_frontend_url = os.environ.get("FRONTEND_URL", "https://up-and-work.vercel.app")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://up-and-work.vercel.app",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        _frontend_url,
+    ],
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
