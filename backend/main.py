@@ -144,17 +144,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS — in production, restrict allow_origins to the frontend URL.
-# NOTE: allow_origins=["*"] is INCOMPATIBLE with allow_credentials=True per the
-# CORS spec — browsers reject it with a null status code. We enumerate origins.
-_frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# Configure CORS — allow all origins since allow_credentials=False (no cookies used).
+# This allows Vercel, preview deployments, and local dev to call the API cleanly.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        _frontend_url,
-    ],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
