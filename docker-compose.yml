@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: upwork_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: upwork_user
+      POSTGRES_PASSWORD: upwork_password
+      POSTGRES_DB: upwork_jobs
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # The FastAPI backend can be run locally or within a container.
+  # For development, we typically run it locally to ease reloading.
+
+volumes:
+  postgres_data:

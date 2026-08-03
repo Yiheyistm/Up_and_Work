@@ -1,0 +1,148 @@
+
+{
+  "person": {
+    "name": "Yiheyis Tamir Ayalew",
+    "title": "Software Engineer",
+    "contact": {
+      "email": "yiheyisyt23@gmail.com",
+      "phone": "0923895809",
+      "location": "Addis Ababa, Ethiopia",
+      "profiles": {
+        "linkedin": "https://linkedin.com/in/yiheyis-tamir-b56aa8300",
+        "github": "https://github.com/yiheyistm"
+      }
+    },
+    "summary": "Software Engineer specializing in backend and mobile development, with hands-on experience building scalable APIs using Go, Python, and Node.js with Clean Architecture principles. Skilled in developing cross-platform mobile apps with Flutter and integrating them with RESTful services. Experienced with PostgreSQL, MongoDB, Docker, and CI/CD workflows. Contributed to production fintech systems and end-to-end feature delivery."
+  },
+  "education": [
+    {
+      "institution": "Addis Ababa Science and Technology University (AASTU)",
+      "degree": "B.Sc. in Software Engineering",
+      "start_date": "05/2022",
+      "end_date": "06/2026",
+      "location": "Addis Ababa, Ethiopia",
+      "cgpa": "3.86/4.0",
+      "coursework": [
+        "Data Structures and Algorithms",
+        "Fundamentals of Programming",
+        "Database Systems",
+        "Object-Oriented Programming",
+        "Computer Organization and Architecture",
+        "System Analysis and Modeling"
+      ]
+    },
+    {
+      "institution": "Africa to Silicon Valley (A2SV) - Backed By Google",
+      "program": "Code Academy",
+      "start_date": "01/2025",
+      "end_date": "11/2025",
+      "location": "Addis Ababa, Ethiopia",
+      "highlights": [
+        "Learned advanced algorithms, including graph, tree, and memoization-based techniques.",
+        "Solved over 600 LeetCode and Codeforces problems to enhance coding efficiency."
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "company": "Eskalate LLC",
+      "role": "Software Engineering Intern",
+      "start_date": "07/2025",
+      "end_date": "09/2025",
+      "location": "Addis Ababa, Ethiopia",
+      "sub_roles": [
+        {
+          "project": "Blog App",
+          "track": "Backend Intern",
+          "responsibilities": [
+            "Built 30+ REST API endpoints in Go with Gin to power blog content creation, search, and AI-assisted recommendations, enabling efficient content management for writers and readers.",
+            "Applied Clean Architecture to structure a multi-layered codebase, improving scalability and maintenance."
+          ]
+        },
+        {
+          "project": "MenuMate App (Menu Digitalizer)",
+          "link": "https://github.com/RealEskalate/G6-MenuMate.git",
+          "track": "Backend Intern",
+          "responsibilities": [
+            "Produced 65+ Go backend APIs to connect Flutter mobile and React clients, creating a unified ecosystem for restaurants and customers.",
+            "Introduced OCR to digitize physical menus, transforming static menu images into searchable, structured digital data for easier customer access."
+          ]
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Bayment - FinTech Virtual Card & P2P Platform",
+      "link": "https://play.google.com/store/apps/details?id=me.bayment.app&pli=1",
+      "role": "Backend Developer (Django) & Mobile Developer (Flutter)",
+      "start_date": "11/2026",
+      "end_date": "05/2026",
+      "tech_stack": ["Django", "Django REST Framework", "Flutter"],
+      "details": [
+        "Full-Stack FinTech App: Engineered a Django REST backend and Flutter mobile UI for a live payment platform.",
+        "Virtual Cards: Implemented features to instantly issue, manage, freeze, and unfreeze global virtual cards.",
+        "P2P Payments: Architected peer-to-peer funding flows integrated with local African bank systems.",
+        "Play Store Release: Deployed the production app to Google Play, ensuring compliance and data security."
+      ]
+    },
+    {
+      "name": "Smart Helmet - Safety & Health Monitoring System",
+      "link": "https://github.com/Yiheyistm/IETP-Group-96.git",
+      "role": "Integrated Engineering Project, IoT, Embedded Systems, Emergency Alert System",
+      "start_date": "10/2024",
+      "end_date": "02/2025",
+      "tech_stack": ["IoT Sensors", "Microcontroller", "Embedded Systems"],
+      "details": [
+        "Transformed a wearable IoT helmet that monitors heart rate, oxygen levels, and body temperature in real time, with automated alerts for anomalies to support safer transport and healthier communities (aligned with SDG 3 and SDG 11).",
+        "Integrated IoT sensors with a microcontroller for continuous monitoring and wireless data transmission to connected devices.",
+        "Conducted three rounds of simulated and field testing to improve sensor reliability, minimize false alerts, and validate system performance."
+      ]
+    },
+    {
+      "name": "Virtual Home Rental APP",
+      "link": "https://github.com/Broker-boyz/Guadaye-RentHub.git",
+      "role": "Mobile Developer",
+      "start_date": "10/2023",
+      "end_date": "04/2024",
+      "tech_stack": ["Flutter", "Firebase", "Google Maps", "3D Viewer", "Firebase Auth", "Firestore"],
+      "details": [
+        "Crafted a mobile application that helps users search and explore rental properties, featuring 3D panoramic views and Google-Maps integration with distance-based filters (1-5 km).",
+        "Unified Firebase Firestore to provide real-time property listings and updates, ensuring smooth search-to-booking workflows tested by early users.",
+        "Implemented secure authentication with Firebase Auth and included payment features to protect user data and manage transactions across 150+ property listings."
+      ]
+    },
+    {
+    "name": "Disease Prediction & Medical Recommendation System",
+    "link": "https://github.com/Yiheyistm/Disease-Prediction-and-Medical-Recommendation-System.git",
+    "role": "Machine Learning & Backend Developer",
+    "start_date": "03/2025",
+    "end_date": "07/2025",
+    "tech_stack": ["Python", "Flask", "Random Forest", "SVM", "Machine Learning"],
+    "details": [
+      "Engineered an ML-driven healthcare system capable of predicting 41 distinct diseases based on 132 symptom inputs.",
+      "Integrated lifestyle-based medical recommendations and guidance into the application workflow."
+    ]
+  },
+  {
+    "name": "Cashless Taxi Payment & Navigation Assistant",
+    "link": "https://github.com/taxi-fare-payment-system",
+    "role": "Backend & Microservices Developer",
+    "start_date": "05/2026",
+    "end_date": "06/2026",
+    "tech_stack": ["Go", "Microservices", "API Gateway", "QR Payments", "Docker"],
+    "details": [
+      "Architected and managed microservices across authentication, digital wallet, QR code processing, messaging, and payment services.",
+      "Enhanced transaction tracking in the wallet service to include sender details and resolved security and API gateway routing configurations."
+    ]
+  }
+  ],
+  "achievements": [
+    "Secured 2nd place at the Hackatom Hackathon (hosted by a Russian university) by crafting a Flutter/Dart mobile app and website to promote nuclear energy awareness, standing out among international competitors."
+  ],
+  "skills": {
+    "languages": ["Go", "Dart", "Java", "Python", "JavaScript (Node.js)", "SQL"],
+    "frameworks_and_tools": ["Flutter", "Express", "Firebase", "MongoDB", "Appwrite"],
+    "version_control": ["Git", "GitHub"]
+  }
+}
