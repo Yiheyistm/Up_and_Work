@@ -26,8 +26,25 @@ load_dotenv()
 from backend.models import Base
 target_metadata = Base.metadata
 
-# Set sqlalchemy.url from .env
-config.set_main_option("sqlalchemy.url", os.environ.get("DATABASE_URL", ""))
+def fix_database_url(url: str) -> str:
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if "sslmode=" in url:
+        url = url.replace("sslmode=require", "ssl=require")
+        url = url.replace("sslmode=prefer", "ssl=require")
+        url = url.replace("sslmode=verify-full", "ssl=require")
+        url = url.replace("sslmode=disable", "ssl=disable")
+        url = url.replace("sslmode=", "ssl=")
+    return url
+
+# Set sqlalchemy.url from .env with asyncpg sanitization
+db_url = fix_database_url(os.environ.get("DATABASE_URL", ""))
+config.set_main_option("sqlalchemy.url", db_url)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

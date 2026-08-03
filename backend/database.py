@@ -15,7 +15,24 @@ from dotenv import load_dotenv
 # Load env vars
 load_dotenv()
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://upwork_user:upwork_password@localhost:5433/upwork_jobs")
+def fix_database_url(url: str) -> str:
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if "sslmode=" in url:
+        url = url.replace("sslmode=require", "ssl=require")
+        url = url.replace("sslmode=prefer", "ssl=require")
+        url = url.replace("sslmode=verify-full", "ssl=require")
+        url = url.replace("sslmode=disable", "ssl=disable")
+        url = url.replace("sslmode=", "ssl=")
+    return url
+
+RAW_DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://upwork_user:upwork_password@localhost:5433/upwork_jobs")
+DATABASE_URL = fix_database_url(RAW_DATABASE_URL)
 
 engine = create_async_engine(DATABASE_URL, echo=False, pool_size=10)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
