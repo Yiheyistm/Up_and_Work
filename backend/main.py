@@ -110,11 +110,15 @@ async def lifespan(app: FastAPI):
     # 4. Start Telegram Bot in async polling mode
     telegram_app = get_telegram_application()
     if telegram_app:
-        await telegram_app.initialize()
-        await telegram_app.start()
-        await telegram_app.updater.start_polling()
-        app.state.telegram_app = telegram_app
-        logger.info("Telegram Bot started in polling mode.")
+        try:
+            await telegram_app.initialize()
+            await telegram_app.start()
+            await telegram_app.updater.start_polling()
+            app.state.telegram_app = telegram_app
+            logger.info("Telegram Bot started in polling mode.")
+        except Exception as err:
+            logger.warning(f"Telegram Bot failed to start polling (another instance may be active): {err}")
+            app.state.telegram_app = None
     else:
         app.state.telegram_app = None
 
