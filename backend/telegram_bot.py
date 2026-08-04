@@ -23,7 +23,10 @@ from backend.models import Job, RssFeed, ProposalDraft
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 MATCH_THRESHOLD = int(os.environ.get("MATCH_SCORE_THRESHOLD", "70"))
-WEBAPP_URL = os.environ.get("TELEGRAM_WEBAPP_URL")
+WEBAPP_URL = os.environ.get("TELEGRAM_WEBAPP_URL", "https://up-and-work.vercel.app")
+if WEBAPP_URL and ("loca.lt" in WEBAPP_URL or "ngrok" in WEBAPP_URL):
+    # Fallback expired dev tunnels to production Vercel app
+    WEBAPP_URL = "https://up-and-work.vercel.app"
 
 
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
