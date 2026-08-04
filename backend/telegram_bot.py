@@ -23,21 +23,24 @@ from backend.models import Job, RssFeed, ProposalDraft
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 MATCH_THRESHOLD = int(os.environ.get("MATCH_SCORE_THRESHOLD", "70"))
-WEBAPP_URL = os.environ.get("TELEGRAM_WEBAPP_URL", "https://up-and-work.vercel.app")
-if WEBAPP_URL and ("loca.lt" in WEBAPP_URL or "ngrok" in WEBAPP_URL):
-    # Fallback expired dev tunnels to production Vercel app
-    WEBAPP_URL = "https://up-and-work.vercel.app"
+
+
+def get_webapp_url() -> str:
+    """Return the active WebApp URL, stripping expired localtunnel/ngrok domains."""
+    url = os.environ.get("TELEGRAM_WEBAPP_URL", "https://up-and-work.vercel.app").strip()
+    if not url or "loca.lt" in url or "ngrok" in url:
+        return "https://up-and-work.vercel.app"
+    return url
 
 
 def _main_menu_keyboard() -> InlineKeyboardMarkup:
     """Build the persistent interactive control panel keyboard."""
     keyboard = []
 
-    # If a HTTPS WebApp URL is configured, show Mini App button at the top!
-    if WEBAPP_URL:
-        keyboard.append([
-            InlineKeyboardButton("🌐 Open UpandWork App", web_app=WebAppInfo(url=WEBAPP_URL))
-        ])
+    webapp_target = get_webapp_url()
+    keyboard.append([
+        InlineKeyboardButton("🌐 Open UpandWork App", web_app=WebAppInfo(url=webapp_target))
+    ])
 
     keyboard.extend([
         [
@@ -870,11 +873,11 @@ async def _post_init(app: Application) -> None:
         await app.bot.set_my_commands(commands)
         logger.info("Telegram native Menu Button commands registered successfully.")
 
-        if WEBAPP_URL:
-            await app.bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(text="🌐 Open App", web_app=WebAppInfo(url=WEBAPP_URL))
-            )
-            logger.info(f"Telegram native Menu Button set to Mini App URL: {WEBAPP_URL}")
+        webapp_target = get_webapp_url()
+        await app.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="🌐 Open App", web_app=WebAppInfo(url=webapp_target))
+        )
+        logger.info(f"Telegram native Menu Button set to Mini App URL: {webapp_target}")
     except Exception as e:
         logger.warning(f"Failed to set Telegram bot commands/menu button: {e}")
 
