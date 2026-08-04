@@ -113,7 +113,12 @@ async def lifespan(app: FastAPI):
         try:
             await telegram_app.initialize()
             await telegram_app.start()
-            await telegram_app.updater.start_polling()
+            # Clear any webhooks/stale sessions before polling to prevent conflicts
+            try:
+                await telegram_app.bot.delete_webhook(drop_pending_updates=True)
+            except Exception:
+                pass
+            await telegram_app.updater.start_polling(drop_pending_updates=True)
             app.state.telegram_app = telegram_app
             logger.info("Telegram Bot started in polling mode.")
         except Exception as err:
