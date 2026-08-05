@@ -6,6 +6,7 @@ It schedules the RSS feed polling and IMAP email polling to run automatically
 at specified intervals, removing the need for manual triggering.
 """
 
+import asyncio
 import os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from loguru import logger
@@ -33,6 +34,25 @@ async def scheduled_email_poll():
     async with AsyncSessionLocal() as session:
         await process_email_inbox(session)
 
+async def scheduled_keep_alive():
+    """Self-ping health endpoint to keep hosting service (e.g. Render free tier) awake."""
+    raw_url = os.environ.get("KEEP_ALIVE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("BACKEND_URL", "")
+    if not raw_url:
+        return
+    url = raw_url.strip()
+    if not url.endswith("/api/v1/system/health"):
+        url = url.rstrip("/") + "/api/v1/system/health"
+    try:
+        def _ping():
+            import urllib.request
+            req = urllib.request.Request(url, headers={"User-Agent": "Up_and_Work-KeepAlive/1.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return resp.status
+        status = await asyncio.to_thread(_ping)
+        logger.debug(f"Keep-alive ping to {url} returned HTTP {status}")
+    except Exception as err:
+        logger.warning(f"Keep-alive ping to {url} failed: {err}")
+
 def setup_scheduler():
     """Configures and starts the background scheduler."""
     scheduler.add_job(
@@ -50,6 +70,17 @@ def setup_scheduler():
         id="email_poll_job", 
         replace_existing=True
     )
+
+    keep_alive_target = os.environ.get("KEEP_ALIVE_URL") or os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("BACKEND_URL", "")
+    if keep_alive_target:
+        scheduler.add_job(
+            scheduled_keep_alive,
+            'interval',
+            minutes=10,
+            id="keep_alive_job",
+            replace_existing=True
+        )
+        logger.info(f"Keep-alive job scheduled for {keep_alive_target} every 10 minutes.")
     
     scheduler.start()
     logger.info(f"Scheduler started. RSS poll every {POLL_INTERVAL}s, Email poll every {EMAIL_POLL_INTERVAL}s.")
@@ -58,3 +89,4 @@ def shutdown_scheduler():
     """Stops the scheduler gracefully."""
     scheduler.shutdown()
     logger.info("Scheduler stopped.")
+

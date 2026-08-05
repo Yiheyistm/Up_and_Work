@@ -58,7 +58,7 @@ def extract_budget(description_html: str) -> dict:
         try:
             range_str = text.split("Hourly Range:")[1].split("\n")[0].strip()
             # Extract all dollar amounts using regex
-            amounts = _re.findall(r"\$?[\d,]+\.?\d*", range_str.replace(",", ""))
+            amounts = [_re.sub(r"[^\d.]", "", a) for a in _re.findall(r"\$?[\d,]+\.?\d*", range_str) if _re.sub(r"[^\d.]", "", a)]
             if len(amounts) >= 2:
                 budget_min = float(amounts[0])
                 budget_max = float(amounts[1])
@@ -73,7 +73,7 @@ def extract_budget(description_html: str) -> dict:
         try:
             budget_str = text.split("Budget:")[1].split("\n")[0].strip()
             # Extract the first valid dollar amount, ignoring markdown/formatting noise
-            amounts = _re.findall(r"\$?[\d,]+\.?\d*", budget_str.replace(",", ""))
+            amounts = [_re.sub(r"[^\d.]", "", a) for a in _re.findall(r"\$?[\d,]+\.?\d*", budget_str) if _re.sub(r"[^\d.]", "", a)]
             if amounts:
                 val = float(amounts[0])
                 budget_min = val

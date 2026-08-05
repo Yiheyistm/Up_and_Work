@@ -1,0 +1,86 @@
+name: Up_and_Work CI/CD (Test & Deploy)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  backend-tests:
+    name: Backend Unit Tests (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Backend Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Backend Unit Tests
+        run: |
+          python -m unittest discover tests
+
+  frontend-build:
+    name: Frontend Build & Typecheck (CI)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        cwd: frontend
+        run: npm ci || npm install
+
+      - name: Type Check & Production Build
+        cwd: frontend
+        run: npm run build
+
+  deploy:
+    name: Continuous Deployment (CD)
+    needs: [backend-tests, frontend-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render Backend Deployment
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "🚀 Triggering Render CD deployment hook..."
+            curl -s -X POST "$RENDER_DEPLOY_HOOK_URL"
+            echo "✅ Render deployment hook successfully triggered!"
+          else
+            echo "ℹ️ RENDER_DEPLOY_HOOK_URL secret not set in GitHub. Render auto-deploys from git push."
+          fi
+
+      - name: Trigger Vercel Frontend Deployment
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            echo "🚀 Triggering Vercel CD deployment hook..."
+            curl -s -X POST "$VERCEL_DEPLOY_HOOK_URL"
+            echo "✅ Vercel deployment hook successfully triggered!"
+          else
+            echo "ℹ️ VERCEL_DEPLOY_HOOK_URL secret not set in GitHub. Vercel auto-deploys from git push."
+          fi

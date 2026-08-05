@@ -1,0 +1,22 @@
+name: Backend Keep-Alive Ping
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free-tier web services from sleeping
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend Health Endpoint
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          TARGET="${BACKEND_URL:-https://up-and-work-backend.onrender.com}"
+          if [[ "$TARGET" != */api/v1/system/health ]]; then
+            TARGET="${TARGET%/}/api/v1/system/health"
+          fi
+          echo "Pinging $TARGET"
+          curl -s -f "$TARGET" || echo "Ping failed"
