@@ -47,11 +47,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Frontend Dependencies
-        cwd: frontend
+        working-directory: frontend
         run: npm ci || npm install
 
       - name: Type Check & Production Build
-        cwd: frontend
+        working-directory: frontend
         run: npm run build
 
   deploy:
