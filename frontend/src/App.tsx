@@ -3,14 +3,15 @@
  *
  * Handles:
  *  - Authentication gate: renders Login page until a valid JWT is confirmed
- *  - Left sidebar navigation with badge counts
+ *  - Left sidebar navigation with badge counts (desktop ≥769px)
+ *  - Mobile bottom navigation bar (≤768px) replacing the hamburger drawer
  *  - Route definitions for all pages
- *  - Logout button in the sidebar footer
+ *  - Logout button in the sidebar footer (desktop) / Settings page (mobile)
  */
 
-import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, MessageSquare, Settings, BarChart, Mail, Menu, X, LogOut, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Target, MessageSquare, Settings, BarChart, Mail, LogOut, Loader2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import JobDetail from './pages/JobDetail';
 import Tracker from './pages/Tracker';
@@ -25,20 +26,34 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './api/client';
 import type { InviteNotification } from './types';
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
+// ─── Navigation definition ─────────────────────────────────────────────────────
+// Single source of truth shared by the desktop sidebar (all links) and the
+// mobile bottom nav (Analytics is intentionally excluded — reachable via
+// Settings on small screens).
 
-function Sidebar({
-  mobileOpen,
-  onClose,
-  email,
-  onLogout,
-}: {
-  mobileOpen: boolean;
-  onClose: () => void;
-  email: string | null;
-  onLogout: () => void;
-}) {
-  const location = useLocation();
+interface NavLink {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  badgeKey?: 'unread' | 'invites';
+}
+
+const NAV_LINKS: NavLink[] = [
+  { path: '/',          label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/tracker',   label: 'Tracker',   icon: Target },
+  { path: '/chat',      label: 'AI Chat',   icon: MessageSquare, badgeKey: 'unread' },
+  { path: '/invites',   label: 'Invites',   icon: Mail,          badgeKey: 'invites' },
+  { path: '/analytics', label: 'Analytics', icon: BarChart },
+  { path: '/settings',  label: 'Settings',  icon: Settings },
+];
+
+function isLinkActive(locationPath: string, linkPath: string): boolean {
+  return locationPath === linkPath ||
+    (linkPath !== '/' && locationPath.startsWith(linkPath));
+}
+
+// Shared hook: live badge counts for AI Chat (unread messages) and Invites.
+function useNavBadges() {
   const unreadCount = useAppStore(s => s.unreadCount);
 
   const { data: invites } = useQuery({
@@ -52,17 +67,26 @@ function Sidebar({
 
   const inviteCount = invites?.length ?? 0;
 
-  const links = [
-    { path: '/',          label: 'Dashboard',  icon: LayoutDashboard },
-    { path: '/tracker',   label: 'Tracker',    icon: Target },
-    { path: '/chat',      label: 'AI Chat',    icon: MessageSquare, badge: unreadCount },
-    { path: '/invites',   label: 'Invites',    icon: Mail,          badge: inviteCount },
-    { path: '/analytics', label: 'Analytics',  icon: BarChart },
-    { path: '/settings',  label: 'Settings',   icon: Settings },
-  ];
+  return (link: NavLink): number | undefined =>
+    link.badgeKey === 'unread' ? unreadCount
+      : link.badgeKey === 'invites' ? inviteCount
+      : undefined;
+}
+
+// ─── Sidebar (desktop) ────────────────────────────────────────────────────────
+
+function Sidebar({
+  email,
+  onLogout,
+}: {
+  email: string | null;
+  onLogout: () => void;
+}) {
+  const location = useLocation();
+  const getBadge = useNavBadges();
 
   return (
-    <div className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`} style={{
+    <div className="sidebar" style={{
       background: 'var(--color-surface)',
       borderRight: '1px solid var(--color-border)',
       height: '100vh',
@@ -78,22 +102,16 @@ function Sidebar({
           <img src="/logo.png" alt="Up_and_Work Logo" style={{ width: '34px', height: '34px', borderRadius: '8px', objectFit: 'cover', border: '1px solid var(--color-border)' }} />
           <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--color-text)' }}>Up and Work</span>
         </div>
-        {mobileOpen && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px' }}>
-            <X size={20} />
-          </button>
-        )}
       </div>
 
       {/* Nav links */}
-      {links.map(link => {
-        const active = location.pathname === link.path ||
-          (link.path !== '/' && location.pathname.startsWith(link.path));
+      {NAV_LINKS.map(link => {
+        const active = isLinkActive(location.pathname, link.path);
+        const badge = getBadge(link);
         return (
           <Link
             key={link.path}
             to={link.path}
-            onClick={onClose}
             style={{
               display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
               padding: '10px var(--space-3)',
@@ -110,13 +128,13 @@ function Sidebar({
           >
             <link.icon size={18} />
             <span style={{ flex: 1 }}>{link.label}</span>
-            {link.badge ? (
+            {badge ? (
               <span style={{
                 background: 'var(--color-accent)', color: '#fff',
                 fontSize: '11px', fontWeight: 700,
                 padding: '2px 6px', borderRadius: '10px',
               }}>
-                {link.badge}
+                {badge}
               </span>
             ) : null}
           </Link>
@@ -168,10 +186,43 @@ function Sidebar({
   );
 }
 
+// ─── Bottom nav (mobile ≤768px) ───────────────────────────────────────────────
+// Replaces the old hamburger drawer. Analytics is intentionally left out on
+// small screens — it is reachable via Settings.
+
+function BottomNav() {
+  const location = useLocation();
+  const getBadge = useNavBadges();
+
+  return (
+    <nav className="bottom-nav" aria-label="Bottom navigation">
+      {NAV_LINKS.filter(link => link.path !== '/analytics').map(link => {
+        const active = isLinkActive(location.pathname, link.path);
+        const badge = getBadge(link);
+        return (
+          <Link
+            key={link.path}
+            to={link.path}
+            className={`bottom-nav-link${active ? ' active' : ''}`}
+            aria-current={active ? 'page' : undefined}
+          >
+            <span className="bottom-nav-icon">
+              <link.icon size={20} strokeWidth={active ? 2.4 : 2} />
+              {badge != null && badge > 0 && (
+                <span className="bottom-nav-badge">{badge > 99 ? '99+' : badge}</span>
+              )}
+            </span>
+            <span className="bottom-nav-label">{link.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 // ─── App Root ────────────────────────────────────────────────────────────────
 
 function App() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const { isAuthenticated, isLoading, email, login, logout } = useAuth();
 
   // While verifying stored token — show a minimal spinner
@@ -197,39 +248,8 @@ function App() {
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-        {!mobileOpen && (
-          <button
-            onClick={() => setMobileOpen(true)}
-            style={{
-              position: 'fixed', top: '12px', left: '12px', zIndex: 200,
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              color: 'var(--color-text)', borderRadius: 'var(--radius-sm)',
-              padding: '8px', cursor: 'pointer',
-            }}
-            className="mobile-menu-btn"
-          >
-            <Menu size={20} />
-          </button>
-        )}
-
-        {mobileOpen && (
-          <div
-            onClick={() => setMobileOpen(false)}
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(0,0,0,0.5)', zIndex: 99,
-            }}
-            className="mobile-overlay"
-          />
-        )}
-
-        <Sidebar
-          mobileOpen={mobileOpen}
-          onClose={() => setMobileOpen(false)}
-          email={email}
-          onLogout={logout}
-        />
-        <div style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg)' }}>
+        <Sidebar email={email} onLogout={logout} />
+        <div className="app-content" style={{ flex: 1, overflowY: 'auto', background: 'var(--color-bg)' }}>
           <Routes>
             <Route path="/"          element={<Dashboard />} />
             <Route path="/job/:id"   element={<JobDetail />} />
@@ -241,6 +261,7 @@ function App() {
           </Routes>
         </div>
       </div>
+      <BottomNav />
     </BrowserRouter>
   );
 }

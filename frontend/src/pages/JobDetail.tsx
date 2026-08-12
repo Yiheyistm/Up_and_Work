@@ -44,7 +44,7 @@ function ToastContainer() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
   };
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999 }}>
+    <div className="toast-container">
       {toasts.map(t => (
         <div key={t.id} style={{
           background: 'var(--color-surface-2)', border: `1px solid var(--color-border)`,
@@ -244,7 +244,7 @@ export default function JobDetail() {
   const charCount = (isEditingProposal ? editedLetter : primaryProposal?.cover_letter ?? '').length;
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '1100px', margin: '0 auto' }}>
+    <div className="jd-page" style={{ padding: 'var(--space-6)', maxWidth: '1100px', margin: '0 auto' }}>
       {/* Top Header & Back Link */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
         <button
@@ -437,7 +437,7 @@ export default function JobDetail() {
       )}
 
       {/* Navigation Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 'var(--space-6)' }}>
+      <div className="jd-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 'var(--space-6)' }}>
         {[
           { key: 'overview', label: 'Job Overview & Requirements', icon: Tag },
           { key: 'analysis', label: 'AI Match Analysis', icon: Target },
@@ -465,7 +465,7 @@ export default function JobDetail() {
 
       {/* Tab 1: Overview & Skills */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
+        <div className="jd-grid-2" style={{ display: 'grid', gap: 'var(--space-6)', marginBottom: 'var(--space-6)' }}>
           <div style={{ background: 'var(--color-surface)', padding: 'var(--space-6)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
             <h3 style={{ marginTop: 0, fontSize: '1rem', marginBottom: 'var(--space-3)' }}>Full Job Description</h3>
             <div style={{ color: 'var(--color-text)', lineHeight: 1.7, fontSize: '0.9rem', whiteSpace: 'pre-wrap', maxHeight: '420px', overflowY: 'auto' }}>
@@ -519,7 +519,7 @@ export default function JobDetail() {
       {activeTab === 'analysis' && (
         <div style={{ background: 'var(--color-surface)', padding: 'var(--space-6)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', marginBottom: 'var(--space-6)' }}>
           {reasoning ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)' }}>
+            <div className="jd-grid-1" style={{ display: 'grid', gap: 'var(--space-6)' }}>
               <div>
                 <h3 style={{ marginTop: 0, color: 'var(--color-success)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <CheckCircle size={16} /> Candidate Match Strengths

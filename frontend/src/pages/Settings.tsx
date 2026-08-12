@@ -18,12 +18,15 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   User, Bot, Tag, ShieldAlert, Rss, Link2, Settings as SettingsIcon,
   Save, Plus, X, Eye, EyeOff, CheckCircle, XCircle, Loader2,
   Play, RefreshCw, Wifi, Activity, Download, Upload, FileJson,
+  BarChart, LogOut,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 type TabId = 'profile' | 'ai' | 'skills' | 'redflags' | 'feeds' | 'integrations' | 'system';
@@ -68,6 +71,8 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<TabId>('profile');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
+  const navigate = useNavigate();
+  const { email: accountEmail, logout } = useAuth();
 
   // ── Profile fields ──
   const [name, setName]               = useState('');
@@ -381,7 +386,7 @@ export default function Settings() {
 
   // ─── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+    <div className="settings-root" style={{ display: 'flex', overflow: 'hidden' }}>
       <style>{`
         @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
@@ -412,11 +417,11 @@ export default function Settings() {
 
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: '24px', right: '24px', zIndex: 10000,
+        <div className="toast-container" style={{
+          zIndex: 10000,
           background: toast.ok ? '#10B981' : '#EF4444', color: '#fff',
           padding: '12px 20px', borderRadius: 'var(--radius-md)',
-          display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600,
+          display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px', fontWeight: 600,
           boxShadow: '0 4px 20px rgba(0,0,0,0.4)', animation: 'fadeIn 0.2s',
         }}>
           {toast.ok ? <CheckCircle size={18} /> : <XCircle size={18} />}
@@ -424,14 +429,9 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ── Left Sidebar Nav ── */}
-      <nav style={{
-        width: '220px', flexShrink: 0, padding: '16px 12px',
-        borderRight: '1px solid var(--color-border)', display: 'flex',
-        flexDirection: 'column', gap: '4px', overflowY: 'auto',
-        background: 'var(--color-surface)',
-      }}>
-        <div style={{ padding: '0 8px 12px', borderBottom: '1px solid var(--color-border)', marginBottom: '8px' }}>
+      {/* ── Left Sidebar Nav (horizontal scroll strip on mobile) ── */}
+      <nav className="settings-nav">
+        <div className="settings-nav-header" style={{ padding: '0 8px 12px', borderBottom: '1px solid var(--color-border)', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <SettingsIcon size={22} color="var(--color-accent)" />
             <div>
@@ -461,6 +461,43 @@ export default function Settings() {
             {tab.label}
           </button>
         ))}
+
+        {/* Mobile-only Nav footer: Analytics shortcut + account / sign out
+            (On desktop, sidebar already has Analytics & logout, so hidden via settings-mobile-only) */}
+        <div className="settings-mobile-only" style={{
+          marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', flexDirection: 'column', gap: '6px',
+        }}>
+          <button
+            onClick={() => navigate('/analytics')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', borderRadius: 'var(--radius-md)',
+              background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+              color: 'var(--color-accent)', cursor: 'pointer',
+              fontSize: '0.9rem', fontWeight: 600, transition: 'all 0.15s', textAlign: 'left',
+            }}
+          >
+            <BarChart size={17} /> Analytics
+          </button>
+          <div style={{
+            fontSize: '0.75rem', color: 'var(--color-text-muted)',
+            padding: '4px 12px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {accountEmail ?? 'Signed in'}
+          </div>
+          <button
+            onClick={logout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              padding: '10px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: 'var(--radius-sm)', color: '#EF4444',
+              cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.15s', textAlign: 'left', fontWeight: 600,
+            }}
+          >
+            <LogOut size={16} /> Sign out
+          </button>
+        </div>
       </nav>
 
       {/* ── Main Content ── */}
@@ -499,7 +536,7 @@ export default function Settings() {
 
             <div style={sectionStyle}>
               <h2 style={sectionTitleStyle}><User size={17} color="var(--color-accent)" /> Identity</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="settings-grid-2">
                 <div>
                   <label style={labelStyle}>Full Name</label>
                   <input type="text" value={name} onChange={e => setName(e.target.value)} style={fieldStyle} />
@@ -520,7 +557,7 @@ export default function Settings() {
 
             <div style={sectionStyle}>
               <h2 style={sectionTitleStyle}><Link2 size={17} color="var(--color-accent)" /> Contact & Links</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="settings-grid-2">
                 <div>
                   <label style={labelStyle}>Email</label>
                   <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={fieldStyle} />
@@ -563,7 +600,7 @@ export default function Settings() {
 
             <div style={sectionStyle}>
               <h2 style={sectionTitleStyle}><Bot size={17} color="var(--color-accent)" /> Rate & Budget Filters</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="settings-grid-2">
                 <div>
                   <label style={labelStyle}>Target Hourly Rate ($/hr)</label>
                   <input type="number" value={targetRate} onChange={e => setTargetRate(Number(e.target.value))} style={fieldStyle} min={1} />
@@ -741,7 +778,7 @@ export default function Settings() {
               <h2 style={sectionTitleStyle}>
                 <Wifi size={17} color="var(--color-accent)" /> IMAP Email (Upwork Invites)
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="settings-grid-2" style={{ gap: '12px' }}>
                 <div>
                   <label style={labelStyle}>IMAP_EMAIL</label>
                   <div style={{ ...fieldStyle, color: systemStatus?.integrations?.imap?.email ? 'var(--color-text)' : 'var(--color-text-muted)', fontFamily: 'monospace', fontSize: '0.88rem' }}>
@@ -790,7 +827,7 @@ export default function Settings() {
               <h2 style={sectionTitleStyle}>
                 <Activity size={17} color="var(--color-accent)" /> Telegram Notifications
               </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="settings-grid-2" style={{ gap: '12px' }}>
                 <MaskedField label="TELEGRAM_BOT_TOKEN" masked={systemStatus?.integrations?.telegram_bot?.masked ?? ''} fieldKey="telegram" isSet={systemStatus?.integrations?.telegram_bot?.set ?? false} />
                 <div>
                   <label style={labelStyle}>TELEGRAM_CHAT_ID</label>
@@ -879,7 +916,7 @@ export default function Settings() {
             {/* Scanner Controls */}
             <div style={sectionStyle}>
               <h2 style={sectionTitleStyle}><Play size={17} color="var(--color-accent)" /> Background Scanner</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="settings-grid-2">
                 <div>
                   <label style={labelStyle}>RSS Poll Interval</label>
                   <div style={{ ...fieldStyle, fontFamily: 'monospace', color: 'var(--color-text)' }}>

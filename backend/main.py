@@ -149,7 +149,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS — restrict allow_origins strictly to trusted domains
+# Configure CORS — allow local dev ports and production frontend domains
 _frontend_url = os.environ.get("FRONTEND_URL", "https://up-and-work.vercel.app")
 app.add_middleware(
     CORSMiddleware,
@@ -157,10 +157,14 @@ app.add_middleware(
         "https://up-and-work.vercel.app",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://localhost:8001",
+        "http://localhost:8000",
         _frontend_url,
     ],
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )

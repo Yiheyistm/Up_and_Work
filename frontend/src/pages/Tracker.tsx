@@ -124,11 +124,12 @@ export default function Tracker() {
             return (
               <div
                 key={key}
+                className="tracker-col"
                 style={{
                   flex: '0 0 300px', width: '300px', minWidth: '300px',
                   background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
                   border: '1px solid var(--color-border)', borderTop: `4px solid ${color}`,
-                  display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 220px)',
+                  display: 'flex', flexDirection: 'column',
                   boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
                 }}
               >

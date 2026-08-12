@@ -272,7 +272,7 @@ export default function Analytics() {
   }
 
   return (
-    <div style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="an-page" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
       {/* Header */}
@@ -294,7 +294,7 @@ export default function Analytics() {
       </div>
 
       {/* Trend + Budget row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px', animation: 'fadeUp 0.4s ease 0.1s both' }}>
+      <div className="an-row-2" style={{ display: 'grid', gap: '14px', animation: 'fadeUp 0.4s ease 0.1s both' }}>
 
         {/* Trend sparkline */}
         <div style={{
@@ -333,7 +333,7 @@ export default function Analytics() {
       </div>
 
       {/* Funnel + Score distribution row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', animation: 'fadeUp 0.4s ease 0.15s both' }}>
+      <div className="an-row-1" style={{ display: 'grid', gap: '14px', animation: 'fadeUp 0.4s ease 0.15s both' }}>
 
         {/* Application funnel */}
         <div style={{
@@ -387,7 +387,7 @@ export default function Analytics() {
               const pct = (count / maxSkillCount) * 100;
               return (
                 <div key={skill} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '110px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', textAlign: 'right', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill}</div>
+                  <div className="an-skill-label" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', textAlign: 'right', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill}</div>
                   <div style={{ flex: 1, height: '20px', background: 'var(--color-bg)', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #a78bfa, #7c3aed)', borderRadius: '4px', transition: 'width 0.8s ease' }} />
                   </div>

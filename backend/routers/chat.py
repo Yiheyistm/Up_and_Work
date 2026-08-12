@@ -6,12 +6,14 @@ allowing the user to ask Gemini for advice, rewrite proposals, etc.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from backend.database import get_db
 from backend.models import ChatSession, ChatMessage, Job
+from backend.routers.auth import get_current_user
 from backend.schemas import ChatSessionResponse, ChatMessageResponse, ChatMessageBase
 from pydantic import BaseModel
 
@@ -28,9 +30,9 @@ class SessionUpdate(BaseModel):
     title: str
 
 @router.get("/sessions", response_model=List[ChatSessionResponse])
-async def get_sessions(job_id: uuid.UUID | None = None, db: AsyncSession = Depends(get_db)):
+async def get_sessions(job_id: uuid.UUID | None = None, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Fetch chat sessions, optionally filtered by job_id."""
-    stmt = select(ChatSession).options(selectinload(ChatSession.messages)).order_by(desc(ChatSession.created_at))
+    stmt = select(ChatSession).options(selectinload(ChatSession.messages)).order_by(desc(ChatSession.updated_at), desc(ChatSession.created_at))
     if job_id:
         stmt = stmt.where(ChatSession.job_id == job_id)
         
@@ -39,7 +41,7 @@ async def get_sessions(job_id: uuid.UUID | None = None, db: AsyncSession = Depen
     return sessions
 
 @router.post("/sessions", response_model=ChatSessionResponse)
-async def create_session(session_data: SessionCreate, db: AsyncSession = Depends(get_db)):
+async def create_session(session_data: SessionCreate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Create a new chat session."""
     if session_data.job_id:
         job = await db.get(Job, session_data.job_id)
@@ -60,7 +62,7 @@ async def create_session(session_data: SessionCreate, db: AsyncSession = Depends
     return res.scalar_one()
 
 @router.patch("/sessions/{session_id}", response_model=ChatSessionResponse)
-async def update_session_title(session_id: uuid.UUID, update: SessionUpdate, db: AsyncSession = Depends(get_db)):
+async def update_session_title(session_id: uuid.UUID, update: SessionUpdate, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Update the title of a chat session."""
     session = await db.get(ChatSession, session_id)
     if not session:
@@ -72,7 +74,7 @@ async def update_session_title(session_id: uuid.UUID, update: SessionUpdate, db:
     return res.scalar_one()
 
 @router.delete("/sessions/{session_id}", response_model=dict)
-async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Delete a chat session and all its messages."""
     session = await db.get(ChatSession, session_id)
     if not session:
@@ -82,14 +84,14 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     return {"deleted": True}
 
 @router.get("/sessions/{session_id}/messages", response_model=List[ChatMessageResponse])
-async def get_messages(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_messages(session_id: uuid.UUID, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Fetch all messages for a specific session."""
     stmt = select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at)
     result = await db.execute(stmt)
     return result.scalars().all()
 
 @router.post("/sessions/{session_id}/messages", response_model=ChatMessageResponse)
-async def create_message(session_id: uuid.UUID, message_data: ChatMessageBase, db: AsyncSession = Depends(get_db)):
+async def create_message(session_id: uuid.UUID, message_data: ChatMessageBase, db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Add a user or assistant message to a session."""
     session = await db.get(ChatSession, session_id)
     if not session:
@@ -102,6 +104,7 @@ async def create_message(session_id: uuid.UUID, message_data: ChatMessageBase, d
     )
     
     db.add(message)
+    session.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(message)
     

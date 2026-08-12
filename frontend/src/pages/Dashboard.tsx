@@ -35,7 +35,7 @@ function ToastContainer() {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999 }}>
+    <div className="toast-container">
       {toasts.map(t => (
         <div key={t.id} style={{
           background: 'var(--color-surface-2)',

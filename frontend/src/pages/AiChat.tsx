@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAppStore } from '../store/appStore';
-import { Send, Bot, User, Plus, Loader, X, MessageSquare, Edit3, Trash2, Copy, Check, Sparkles } from 'lucide-react';
+import { Send, Bot, User, Plus, Loader, X, MessageSquare, Edit3, Trash2, Copy, Check, Sparkles, Square } from 'lucide-react';
 import type { ChatSession, ChatMessage } from '../types';
 import ReactMarkdown from 'react-markdown';
 
@@ -16,10 +16,16 @@ export default function AiChat() {
   const [streamingText, setStreamingText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [optimisticMsg, setOptimisticMsg] = useState<{ content: string; sentAt: string } | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const activeSessionId = useAppStore(s => s.activeChatSessionId);
   const setActiveChat = useAppStore(s => s.setActiveChat);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unmountedRef = useRef(false);
+  const intentionalCloseRef = useRef(false);
+  const pendingAutoPromptRef = useRef<string | null>(autoPrompt ?? null);
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery<ChatSession[]>({
     queryKey: ['chatSessions'],
@@ -50,41 +56,102 @@ export default function AiChat() {
   useEffect(() => {
     if (!activeSessionId) return;
 
-    wsRef.current?.close();
+    // Fresh lifecycle for this session — clear per-session UI state.
+    setOptimisticMsg(null);
+    setErrorBanner(null);
+    unmountedRef.current = false;
+    intentionalCloseRef.current = false;
 
-    const ws = new WebSocket(`${import.meta.env.VITE_WS_URL || 'ws://localhost:8001'}/ws/chat/${activeSessionId}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      if (autoPrompt) {
-        setIsStreaming(true);
-        setStreamingText('');
-        ws.send(JSON.stringify({ content: autoPrompt }));
-        window.history.replaceState({}, document.title);
+    // Deliberately swap sockets when switching sessions: suppress the old
+    // socket's onclose so it cannot schedule a reconnect.
+    if (wsRef.current) {
+      intentionalCloseRef.current = true;
+      const old = wsRef.current;
+      old.onclose = null;
+      old.onerror = null;
+      if (old.readyState === WebSocket.OPEN || old.readyState === WebSocket.CONNECTING) {
+        old.close();
       }
-    };
+      wsRef.current = null;
+    }
 
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.event === 'ping') return;
+    const connectSocket = () => {
+      if (!activeSessionId || unmountedRef.current) return;
 
-        if (!data.done) {
-          setStreamingText(prev => prev + (data.chunk ?? ''));
-        } else {
+      const token = localStorage.getItem('upw_token') ?? '';
+      const ws = new WebSocket(`${import.meta.env.VITE_WS_URL || 'ws://localhost:8001'}/ws/chat/${activeSessionId}?token=${encodeURIComponent(token)}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        // Send a pending autoPrompt (from location.state) on every successful
+        // open until it has been delivered once.
+        if (pendingAutoPromptRef.current) {
+          setIsStreaming(true);
           setStreamingText('');
-          setIsStreaming(false);
-          refetchMessages();
+          ws.send(JSON.stringify({ content: pendingAutoPromptRef.current }));
+          pendingAutoPromptRef.current = null;
+          window.history.replaceState({}, document.title);
         }
-      } catch {
-        setStreamingText(prev => prev + e.data);
-      }
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.event === 'ping') return;
+
+          if (data.type === 'error') {
+            setIsStreaming(false);
+            setStreamingText('');
+            setOptimisticMsg(null);
+            setErrorBanner(data.message ?? 'Something went wrong.');
+            return;
+          }
+
+          if (!data.done) {
+            setStreamingText(prev => prev + (data.chunk ?? ''));
+          } else {
+            setStreamingText('');
+            setIsStreaming(false);
+            setOptimisticMsg(null);
+            refetchMessages();
+          }
+        } catch {
+          setStreamingText(prev => prev + e.data);
+        }
+      };
+
+      ws.onerror = () => {
+        setIsStreaming(false);
+        setStreamingText('');
+      };
+
+      ws.onclose = () => {
+        if (intentionalCloseRef.current || unmountedRef.current) return;
+        // Unexpected drop — reset streaming state so the UI never stays stuck.
+        setIsStreaming(false);
+        setStreamingText('');
+        setOptimisticMsg(null);
+        refetchMessages();
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = setTimeout(connectSocket, 3000);
+      };
     };
 
-    ws.onerror = () => { setIsStreaming(false); setStreamingText(''); };
+    connectSocket();
 
     return () => {
-      ws.close();
+      unmountedRef.current = true;
+      intentionalCloseRef.current = true;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [activeSessionId, refetchMessages]);
 
@@ -109,19 +176,23 @@ export default function AiChat() {
 
   const handleSendPrompt = (promptText: string) => {
     if (isStreaming || !wsRef.current || !activeSessionId) return;
+    const content = promptText.trim();
+    if (!content) return;
     setInput('');
+    setErrorBanner(null);
     setIsStreaming(true);
     setStreamingText('');
+    setOptimisticMsg({ content, sentAt: new Date().toISOString() });
 
     if (!titleUpdated.current.has(activeSessionId)) {
       titleUpdated.current.add(activeSessionId);
-      const title = promptText.length > 50 ? promptText.slice(0, 50) + '...' : promptText;
+      const title = content.length > 50 ? content.slice(0, 50) + '...' : content;
       api.updateSessionTitle(activeSessionId, title).then(() => {
         queryClient.invalidateQueries({ queryKey: ['chatSessions'] });
       }).catch(() => {});
     }
 
-    wsRef.current.send(JSON.stringify({ content: promptText }));
+    wsRef.current.send(JSON.stringify({ content }));
   };
 
   const handleSend = async () => {
@@ -129,8 +200,10 @@ export default function AiChat() {
     if (!content || !activeSessionId || isStreaming || !wsRef.current) return;
 
     setInput("");
+    setErrorBanner(null);
     setIsStreaming(true);
     setStreamingText("");
+    setOptimisticMsg({ content, sentAt: new Date().toISOString() });
 
     if (!titleUpdated.current.has(activeSessionId)) {
       titleUpdated.current.add(activeSessionId);
@@ -144,6 +217,17 @@ export default function AiChat() {
     }
 
     wsRef.current.send(JSON.stringify({ content }));
+  };
+
+  const handleStop = () => {
+    // Ask the backend to cancel the in-flight generation (if the socket is up).
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'cancel' }));
+    }
+    // Reset optimistically so the UI feels responsive; the backend's done
+    // frame (or onclose) will settle any remaining state.
+    setIsStreaming(false);
+    setStreamingText('');
   };
 
   const createSessionMutation = useMutation({
@@ -188,7 +272,7 @@ export default function AiChat() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-bg)' }}>
+    <div className="ai-chat-root" style={{ display: 'flex', background: 'var(--color-bg)' }}>
       {/* Mobile backdrop overlay for chat conversations sidebar */}
       {sidebarOpen && (
         <div
@@ -482,6 +566,27 @@ export default function AiChat() {
                 </div>
               ))}
 
+              {/* Optimistic user bubble — shown until the persisted message is refetched */}
+              {optimisticMsg && (
+                <div style={{ display: 'flex', gap: 'var(--space-3)', maxWidth: '100%', alignSelf: 'flex-end' }}>
+                  <div style={{
+                    position: 'relative',
+                    background: 'var(--color-surface-2)',
+                    border: '1px solid var(--color-accent)',
+                    padding: 'var(--space-3) var(--space-4)',
+                    borderRadius: '16px 16px 4px 16px',
+                    lineHeight: 1.6, fontSize: '0.9rem',
+                    color: 'var(--color-text)',
+                    wordBreak: 'break-word',
+                  }}>
+                    {optimisticMsg.content}
+                  </div>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--color-surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={16} />
+                  </div>
+                </div>
+              )}
+
               {/* Streaming bubble */}
               {isStreaming && (
                 <div style={{ display: 'flex', gap: 'var(--space-3)', maxWidth: '100%', alignSelf: 'flex-start' }}>
@@ -498,7 +603,7 @@ export default function AiChat() {
             </div>
 
             {/* Quick Prompts & Input Area */}
-            <div style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: 'var(--space-3)' }}>
+            <div className="ai-chat-input" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', padding: 'var(--space-3)' }}>
               {/* Creative Categorized Strategy Chips */}
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: 'var(--space-3)', paddingBottom: '4px', scrollbarWidth: 'none' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-accent)', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, paddingRight: '4px' }}>
@@ -570,6 +675,31 @@ export default function AiChat() {
                 ))}
               </div>
 
+              {/* Inline error banner — dismissible, cleared on next send */}
+              {errorBanner && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)',
+                  background: 'rgba(239,68,68,0.12)', border: '1px solid var(--color-danger)',
+                  color: 'var(--color-danger)', padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-sm)', marginBottom: 'var(--space-2)',
+                  fontSize: '0.85rem', animation: 'fadeIn 0.2s ease',
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, wordBreak: 'break-word' }}>
+                    {errorBanner}
+                  </span>
+                  <button
+                    onClick={() => setErrorBanner(null)}
+                    title="Dismiss"
+                    style={{
+                      background: 'none', border: 'none', color: 'var(--color-danger)',
+                      cursor: 'pointer', padding: '2px', flexShrink: 0,
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               <form
                 onSubmit={e => { e.preventDefault(); handleSend(); }}
                 style={{ display: 'flex', gap: 'var(--space-2)' }}
@@ -602,6 +732,26 @@ export default function AiChat() {
                 >
                   {isStreaming ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={18} />}
                 </button>
+                {isStreaming && (
+                  <button
+                    type="button"
+                    onClick={handleStop}
+                    title="Stop generating"
+                    style={{
+                      background: 'var(--color-surface-2)', color: 'var(--color-text)',
+                      border: '1px solid var(--color-border)', padding: '0 14px',
+                      borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      transition: 'border-color 0.15s, color 0.15s', flexShrink: 0,
+                      fontSize: '0.8rem', fontWeight: 500,
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.color = 'var(--color-danger)'; }}
+                    onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.color = 'var(--color-text)'; }}
+                  >
+                    <Square size={14} />
+                    Stop
+                  </button>
+                )}
               </form>
             </div>
           </>
@@ -611,6 +761,7 @@ export default function AiChat() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
       `}</style>
     </div>
   );
